@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="zh-TW">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>zlDebugWin</title>
+        <link rel="stylesheet" href="style.css" />
+    </head>
+    <body>
+        <div class="container">
+            <!-- 上方控制列 -->
+            <header class="toolbar">
+                <button id="clearBtn">清除</button>
+                <label>
+                    過濾:
+                    <input
+                        type="text"
+                        id="filterInput"
+                        placeholder="輸入文字過濾 Log"
+                    />
+                </label>
+                <label>
+                    IP:
+                    <input
+                        type="text"
+                        id="ipInput"
+                        placeholder="輸入 IP 過濾"
+                    />
+                </label>
+                <label>
+                    <input type="checkbox" id="showIpCheckbox" checked />
+                    顯示IP
+                </label>
+                <label>
+                    搜尋:
+                    <input
+                        type="text"
+                        id="searchInput"
+                        placeholder="輸入文字搜尋"
+                    />
+                    <button id="searchBtn">找下一個</button>
+                </label>
+            </header>
+
+            <!-- 主內容區域 -->
+            <div class="content">
+                <!-- 左側 Log 區域 -->
+                <main class="log-area" id="logArea">
+                    <!-- Log 項目會動態加入 -->
+                </main>
+
+                <!-- 右側監控區塊 -->
+                <aside class="monitor-area" id="monitorArea">
+                    <!-- 監控項目會動態加入 -->
+                </aside>
+            </div>
+        </div>
+
+        <script src="main.js"></script>
+    </body>
+</html>
