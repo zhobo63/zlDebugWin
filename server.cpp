@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 #include <mutex>
+#include <filesystem>
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
@@ -12,7 +13,9 @@
 #include <sys/stat.h>
 #endif
 
+#ifndef HV_STATICLIB
 #define HV_STATICLIB
+#endif
 #include "hv.h"
 #include "HttpServer.h"
 #include "WebSocketServer.h"
@@ -104,8 +107,16 @@ static void on_log_udp(hio_t* io, void* buf, int readbytes) {
     j["color"] = color;
 
     int colorInt = static_cast<int>(data[0] << 24 | data[1] << 16 | data[2] << 8 | data[3]);
-    std::string msg = j.dump();
-    printf("[LOG] %s %s: %s%s\n", ansiColor(colorInt).c_str(), j["time"].get<std::string>().c_str(), ip.c_str(), text.c_str(), ansiReset());
+    std::cout << "[LOG]" << ansiColor(colorInt) << j["time"].get<std::string>() << " " << ip << ": " << text << ansiReset() << std::endl;
+    std::string msg;
+    try {
+        msg = j.dump();
+    }
+    catch (const Json::parse_error& e) {
+        std::cout << "[ERROR] on_log_udp json.dump " << e.what() << std::endl;
+        return;
+    }
+    catch (...) { return; }
     broadcastToClients(msg);
 }
 
@@ -141,30 +152,33 @@ static void on_monitor_udp(hio_t* io, void* buf, int readbytes) {
 
 // ── 取得 WWW 目錄的絕對路徑 ──
 static std::string getWwwPath() {
+    // Get the directory containing the executable
+    std::filesystem::path exe_path;
 #ifdef _WIN32
-    char exe_path[MAX_PATH] = {0};
-    GetModuleFileNameA(NULL, exe_path, MAX_PATH);
-    std::string exe(exe_path);
-
-    // Walk up from the executable directory until we find WWW/
-    while (!exe.empty()) {
-        size_t lastSlash = 0;
-        for (size_t i = exe.size(); i > 0; --i) {
-            if (exe[i - 1] == '/' || exe[i - 1] == '\\') {
-                lastSlash = i - 1;
-                break;
-            }
-        }
-        std::string base = exe.substr(0, lastSlash + 1);
-        std::string www = base + "WWW";
-        struct _stat st;
-        if (_stat(www.c_str(), &st) == 0 && (st.st_mode & _S_IFDIR)) {
-            return www;
-        }
-        // Truncate to walk up one level
-        exe = base.substr(0, lastSlash);
+    char exe_buf[MAX_PATH] = {0};
+    GetModuleFileNameA(NULL, exe_buf, MAX_PATH);
+    exe_path = std::filesystem::path(exe_buf).parent_path();
+#else
+    char buf[4096];
+    ssize_t len = readlink("/proc/self/exe", buf, sizeof(buf) - 1);
+    if (len > 0) {
+        buf[len] = '\0';
+        exe_path = std::filesystem::path(buf).parent_path();
+    } else {
+        exe_path = ".";
     }
 #endif
+
+    // Walk up from the executable directory until we find WWW/
+    for (std::filesystem::path dir = exe_path;
+         dir != dir.parent_path();
+         dir = dir.parent_path()) {
+        std::filesystem::path www = dir / "WWW";
+        if (std::filesystem::exists(www) && std::filesystem::is_directory(www)) {
+            return www.string();
+        }
+    }
+
     // Fallback: use current directory
     return "WWW";
 }
